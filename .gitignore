@@ -1,2 +1,4 @@
 node_modules/
-jsconfig.json
+.env
+*.log
+.DS_Store

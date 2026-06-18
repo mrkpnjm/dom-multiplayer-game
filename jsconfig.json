@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "checkJs": true,
+        "strict": false,
+        "target": "ESNext",
+        "module": "NodeNext",
+        "moduleResolution": "nodenext",
+        "lib": ["ESNext", "DOM"]
+    },
+    "include": [
+        "client/**/*.js",
+        "server/**/*.js"
+    ],
+    "exclude": ["node_modules"]
+}
