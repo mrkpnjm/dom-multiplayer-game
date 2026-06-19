@@ -1,103 +1,106 @@
-export const GRID_SIZE = 30;
-export const TICK_INTERVAL = 150;
+export const PLANE_WIDTH = 1600;
+export const PLANE_HEIGHT = 900;
+export const SEGMENT_SIZE = 20;
+export const TICK_INTERVAL = 50;
 
+const SNAKE_SPEED = 10;
+const TRAIL_SPACING = SEGMENT_SIZE / SNAKE_SPEED; // 2 trail entries per visible segment
+const TURN_SPEED = 7; // degrees per tick
+const INITIAL_LENGTH = 5;
+const SAFE_TAIL = TRAIL_SPACING * 10; // head can't hit first 10 body segments (self-collision)
+const FOOD_COUNT = 5;
 const GAME_DURATION = 120;
 
 const STARTING_POSITIONS = [
-    { x: 5,  y: 15, direction: 'RIGHT' },
-    { x: 24, y: 15, direction: 'LEFT'  },
-    { x: 15, y: 5,  direction: 'DOWN'  },
-    { x: 15, y: 24, direction: 'UP'    },
+    { x: 200,  y: 450, angle: 0   },
+    { x: 1400, y: 450, angle: 180 },
+    { x: 800,  y: 150, angle: 90  },
+    { x: 800,  y: 750, angle: 270 },
 ];
 
-const OPPOSITES = { UP: 'DOWN', DOWN: 'UP', LEFT: 'RIGHT', RIGHT: 'LEFT' };
+function dist(a, b) {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
+}
 
-const MOVES = {
-    UP:    { dx:  0, dy: -1 },
-    DOWN:  { dx:  0, dy:  1 },
-    LEFT:  { dx: -1, dy:  0 },
-    RIGHT: { dx:  1, dy:  0 },
-};
-
-function createSnake({ x, y, direction }) {
-    const { dx, dy } = MOVES[OPPOSITES[direction]];
-    return [
-        { x,             y             },
-        { x: x + dx,     y: y + dy     },
-        { x: x + dx * 2, y: y + dy * 2 },
-    ];
+function createSnake({ x, y, angle }) {
+    const rad = (angle * Math.PI) / 180;
+    const trail = [];
+    for (let i = 0; i < INITIAL_LENGTH * TRAIL_SPACING; i++) {
+        trail.push({
+            x: x - Math.cos(rad) * i * SNAKE_SPEED,
+            y: y - Math.sin(rad) * i * SNAKE_SPEED,
+        });
+    }
+    return { x, y, angle, trail, length: INITIAL_LENGTH };
 }
 
 function spawnFood(snakes) {
-    const occupied = new Set(
-        Object.values(snakes).flat().map(({ x, y }) => `${x},${y}`)
-    );
+    const margin = SEGMENT_SIZE * 3;
+    const allTrail = Object.values(snakes).flatMap(s => s.trail);
 
     let pos;
+    let tries = 0;
     do {
         pos = {
-            x: Math.floor(Math.random() * GRID_SIZE),
-            y: Math.floor(Math.random() * GRID_SIZE),
+            x: margin + Math.random() * (PLANE_WIDTH - margin * 2),
+            y: margin + Math.random() * (PLANE_HEIGHT - margin * 2),
         };
-    } while (occupied.has(`${pos.x},${pos.y}`));
+        tries++;
+    } while (tries < 30 && allTrail.some(seg => dist(pos, seg) < SEGMENT_SIZE * 2));
 
     return pos;
 }
 
 export function createGameState(players) {
     const snakes = {};
-    const directions = {};
     const alive = {};
     const scores = {};
 
     players.forEach((player, i) => {
-        const start = STARTING_POSITIONS[i];
-        snakes[player.id] = createSnake(start);
-        directions[player.id] = start.direction;
+        snakes[player.id] = createSnake(STARTING_POSITIONS[i]);
         alive[player.id] = true;
         scores[player.id] = 0;
     });
 
-    return {
-        snakes,
-        directions,
-        alive,
-        scores,
-        food: spawnFood(snakes),
-        timer: GAME_DURATION,
-    };
+    const food = Array.from({ length: FOOD_COUNT }, () => spawnFood(snakes));
+
+    return { snakes, alive, scores, food, timer: GAME_DURATION };
 }
 
-export function setDirection(state, playerId, direction) {
-    if (!state.alive[playerId]) return;
-    if (OPPOSITES[state.directions[playerId]] === direction) return;
-    state.directions[playerId] = direction;
-}
-
-export function tick(state) {
+export function tick(state, turningMap) {
     const died = [];
 
-    const newHeads = {};
     for (const [id, snake] of Object.entries(state.snakes)) {
         if (!state.alive[id]) continue;
-        const { x, y } = snake[0];
-        const { dx, dy } = MOVES[state.directions[id]];
-        newHeads[id] = { x: x + dx, y: y + dy };
+
+        const turning = turningMap.get(id);
+        if (turning === 'left') snake.angle = (snake.angle - TURN_SPEED + 360) % 360;
+        if (turning === 'right') snake.angle = (snake.angle + TURN_SPEED) % 360;
+
+        const rad = (snake.angle * Math.PI) / 180;
+        snake.x += Math.cos(rad) * SNAKE_SPEED;
+        snake.y += Math.sin(rad) * SNAKE_SPEED;
+        snake.trail.unshift({ x: snake.x, y: snake.y });
+        snake.trail = snake.trail.slice(0, (snake.length + 1) * TRAIL_SPACING);
     }
 
-    for (const [id, head] of Object.entries(newHeads)) {
+    for (const [id, snake] of Object.entries(state.snakes)) {
         if (!state.alive[id]) continue;
 
-        if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
+        if (snake.x < 0 || snake.x > PLANE_WIDTH || snake.y < 0 || snake.y > PLANE_HEIGHT) {
             state.alive[id] = false;
             died.push(id);
             continue;
         }
 
-        for (const [otherId, snake] of Object.entries(state.snakes)) {
+        for (const [otherId, otherSnake] of Object.entries(state.snakes)) {
             if (!state.alive[otherId] && otherId !== id) continue;
-            const body = otherId === id ? snake.slice(1) : snake;
-            if (body.some(seg => seg.x === head.x && seg.y === head.y)) {
+            const trailStart = otherId === id ? SAFE_TAIL : 0;
+            const body = otherSnake.trail.slice(trailStart);
+
+            if (body.some(seg => dist({ x: snake.x, y: snake.y }, seg) < SEGMENT_SIZE)) {
                 state.alive[id] = false;
                 died.push(id);
                 break;
@@ -105,46 +108,35 @@ export function tick(state) {
         }
     }
 
-    const aliveEntries = Object.entries(newHeads).filter(([id]) => state.alive[id]);
-    for (let i = 0; i < aliveEntries.length; i++) {
-        for (let j = i + 1; j < aliveEntries.length; j++) {
-            const [idA, hA] = aliveEntries[i];
-            const [idB, hB] = aliveEntries[j];
-            if (hA.x === hB.x && hA.y === hB.y) {
-                state.alive[idA] = false;
-                state.alive[idB] = false;
-                if (!died.includes(idA)) died.push(idA);
-                if (!died.includes(idB)) died.push(idB);
+    for (const [id, snake] of Object.entries(state.snakes)) {
+        if (!state.alive[id]) continue;
+
+        for (let fi = state.food.length - 1; fi >= 0; fi--) {
+            if (dist({ x: snake.x, y: snake.y }, state.food[fi]) < SEGMENT_SIZE * 1.5) {
+                state.scores[id]++;
+                snake.length++;
+                state.food.splice(fi, 1);
+                state.food.push(spawnFood(state.snakes));
             }
         }
     }
 
-    for (const [id, snake] of Object.entries(state.snakes)) {
-        if (!state.alive[id]) continue;
-        const head = newHeads[id];
-        const ateFood = head.x === state.food.x && head.y === state.food.y;
-
-        snake.unshift(head);
-        if (ateFood) {
-            state.scores[id]++;
-            state.food = spawnFood(state.snakes);
-        } else {
-            snake.pop();
-        }
-    }
-
     const alivePlayers = Object.keys(state.alive).filter(id => state.alive[id]);
-
     if (alivePlayers.length <= 1) {
-        const winnerId = alivePlayers.length === 1 ? alivePlayers[0] : getWinner(state);
-        return { died, gameOver: true, winnerId };
+        return { died, gameOver: true, winnerId: alivePlayers[0] ?? getWinner(state) };
     }
 
     return { died, gameOver: false, winnerId: null };
 }
 
 export function getWinner(state) {
-    const alive = Object.entries(state.alive).filter(([, isAlive]) => isAlive);
+    const alive = Object.entries(state.alive).filter(([, a]) => a);
     if (alive.length === 1) return alive[0][0];
     return Object.entries(state.scores).sort(([, a], [, b]) => b - a)[0][0];
+}
+
+export function getSegments(snake) {
+    return Array.from({ length: snake.length }, (_, i) => {
+        return snake.trail[i * TRAIL_SPACING] ?? snake.trail.at(-1);
+    });
 }

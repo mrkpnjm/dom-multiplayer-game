@@ -3,7 +3,7 @@ import http from 'http';
 import { dirname, join } from 'path';
 import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
-import { createGameState, setDirection, tick, getWinner, TICK_INTERVAL } from './gameEngine.js';
+import { createGameState, tick, getWinner, getSegments, TICK_INTERVAL } from './gameEngine.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -22,7 +22,7 @@ let gameState = null;
 let gameLoop = null;
 let timerInterval = null;
 let isPaused = false;
-const pendingInputs = new Map();
+const playerTurning = new Map();
 
 function buildScores() {
     return Array.from(players.values()).map(p => ({
@@ -95,12 +95,7 @@ io.on('connection', (socket) => {
         gameLoop = setInterval(() => {
             if (!gameState || isPaused) return;
 
-            for (const [id, direction] of pendingInputs) {
-                setDirection(gameState, id, direction);
-            }
-            pendingInputs.clear();
-
-            const { died, gameOver, winnerId } = tick(gameState);
+            const { died, gameOver, winnerId } = tick(gameState, playerTurning);
 
             died.forEach(id => {
                 const player = players.get(id);
@@ -108,7 +103,12 @@ io.on('connection', (socket) => {
             });
 
             io.emit('game_state', {
-                snakes: gameState.snakes,
+                snakes: Object.fromEntries(
+                    Object.entries(gameState.snakes).map(([id, snake]) => [
+                        id,
+                        { segments: getSegments(snake), angle: snake.angle },
+                    ])
+                ),
                 food: gameState.food,
                 scores: buildScores(),
                 timer: gameState.timer,
@@ -119,8 +119,8 @@ io.on('connection', (socket) => {
         }, TICK_INTERVAL);
     });
 
-    socket.on('input', ({ direction }) => {
-        pendingInputs.set(socket.id, direction);
+    socket.on('input', ({ turning }) => {
+        playerTurning.set(socket.id, turning);
     });
 
     socket.on('pause', () => {
