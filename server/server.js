@@ -1,36 +1,9 @@
-/**
- * @typedef {Object} Player
- * @property {string} id - The socket ID
- * @property {string} name - The player's display name
- * @property {string} color - The snake's color (e.g., "#FF0000")
- * @property {number} score - Current score
- */
-
-/**
- * @typedef {Object} SnakeSegment
- * @property {number} x - X coordinate on the grid
- * @property {number} y - Y coordinate on the grid
- */
-
-/**
- * @typedef {Object} GameStatePayload
- * @property {Object.<string, SnakeSegment[]>} snakes - Dictionary of snakes by socket ID
- * @property {{x: number, y: number}} food - Current food coordinates
- * @property {Player[]} scores - Current leaderboard
- * @property {number} timer - Time remaining in seconds
- */
-
-/**
- * @typedef {Object} GameOverPayload
- * @property {string} winner - Name of the winning player
- * @property {Player[]} scores - Final leaderboard
- */
-
 import express from 'express';
 import http from 'http';
 import { dirname, join } from 'path';
 import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
+import { createGameState, setDirection, tick, getWinner, TICK_INTERVAL } from './gameEngine.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -40,55 +13,120 @@ app.use(express.static(join(__dirname, '..', 'client')));
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Store players in a Map for easy lookup by socket.id
-/** @type {Map<string, Player>} */
+const COLORS = ['#e74c3c', '#2ecc71', '#3498db', '#f1c40f'];
+
+/** @type {Map<string, { id: string, name: string, color: string }>} */
 const players = new Map();
 
-// Helper array of colors for new players
-const COLORS = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00'];
+let gameState = null;
+let gameLoop = null;
+let timerInterval = null;
+let isPaused = false;
+const pendingInputs = new Map();
+
+function buildScores() {
+    return Array.from(players.values()).map(p => ({
+        ...p,
+        score: gameState ? (gameState.scores[p.id] ?? 0) : 0,
+    }));
+}
+
+function endGame(winnerId) {
+    clearInterval(gameLoop);
+    clearInterval(timerInterval);
+    gameLoop = null;
+    timerInterval = null;
+
+    const winner = players.get(winnerId);
+    io.emit('game_over', {
+        winner: winner ? winner.name : 'Nobody',
+        scores: buildScores(),
+    });
+
+    gameState = null;
+}
+
+function handlePlayerLeave(socketId) {
+    const player = players.get(socketId);
+    if (!player) return;
+
+    players.delete(socketId);
+
+    if (gameState) {
+        gameState.alive[socketId] = false;
+        io.emit('player_died', { name: player.name });
+
+        const alivePlayers = Object.keys(gameState.alive).filter(id => gameState.alive[id]);
+        if (alivePlayers.length <= 1) {
+            endGame(alivePlayers.length === 1 ? alivePlayers[0] : getWinner(gameState));
+        }
+    } else {
+        io.emit('lobby_update', { players: Array.from(players.values()) });
+    }
+}
 
 io.on('connection', (socket) => {
-    console.log('A player connected:', socket.id);
+    socket.on('join', ({ name }) => {
+        const nameExists = [...players.values()].some(p => p.name === name);
+        if (nameExists || players.size >= 4) return;
 
-    // --- Lobby Events ---
-    socket.on('join', (payload) => {
-        // Basic unique name validation
-        let nameExists = false;
-        for (const p of players.values()) {
-            if (p.name === payload.name) nameExists = true;
-        }
-
-        if (nameExists) {
-            // Optionally emit an error back to the client here
-            return;
-        }
-
-        // Create the new player
-        const newPlayer = {
+        players.set(socket.id, {
             id: socket.id,
-            name: payload.name,
+            name,
             color: COLORS[players.size % COLORS.length],
-            score: 0
-        };
+        });
 
-        players.set(socket.id, newPlayer);
-        console.log(`${payload.name} joined the lobby.`);
-
-        // Broadcast the updated player list to ALL connected clients
         io.emit('lobby_update', { players: Array.from(players.values()) });
     });
 
-    // --- Game Menu Events ---
-    
-    // --> NEW: Catch the host's start signal and broadcast it to everyone
     socket.on('start_game', () => {
-        console.log('The host has started the game!');
-        io.emit('start_game'); 
+        if (players.size < 2 || gameLoop) return;
+
+        gameState = createGameState(Array.from(players.values()));
+        isPaused = false;
+        io.emit('start_game');
+
+        timerInterval = setInterval(() => {
+            if (!gameState || isPaused) return;
+            gameState.timer--;
+            if (gameState.timer <= 0) endGame(getWinner(gameState));
+        }, 1000);
+
+        gameLoop = setInterval(() => {
+            if (!gameState || isPaused) return;
+
+            for (const [id, direction] of pendingInputs) {
+                setDirection(gameState, id, direction);
+            }
+            pendingInputs.clear();
+
+            const { died, gameOver, winnerId } = tick(gameState);
+
+            died.forEach(id => {
+                const player = players.get(id);
+                if (player) io.emit('player_died', { name: player.name });
+            });
+
+            io.emit('game_state', {
+                snakes: gameState.snakes,
+                food: gameState.food,
+                scores: buildScores(),
+                timer: gameState.timer,
+                alive: gameState.alive,
+            });
+
+            if (gameOver) endGame(winnerId);
+        }, TICK_INTERVAL);
+    });
+
+    socket.on('input', ({ direction }) => {
+        pendingInputs.set(socket.id, direction);
     });
 
     socket.on('pause', () => {
         const player = players.get(socket.id);
         if (player) {
+            isPaused = true;
             io.emit('game_paused', { name: player.name });
         }
     });
@@ -96,32 +134,17 @@ io.on('connection', (socket) => {
     socket.on('resume', () => {
         const player = players.get(socket.id);
         if (player) {
+            isPaused = false;
             io.emit('game_resumed', { name: player.name });
         }
     });
 
-    socket.on('quit', () => {
-        const player = players.get(socket.id);
-        if (player) {
-            console.log(`${player.name} quit the game.`);
-            // When someone quits, we remove them and update the lobby
-            players.delete(socket.id);
-            io.emit('lobby_update', { players: Array.from(players.values()) });
-        }
-    });
+    socket.on('quit', () => handlePlayerLeave(socket.id));
 
-    // --- Disconnect Handling ---
-    socket.on('disconnect', () => {
-        console.log('A player disconnected:', socket.id);
-        if (players.has(socket.id)) {
-            players.delete(socket.id);
-            // Broadcast updated lobby if someone closes their browser
-            io.emit('lobby_update', { players: Array.from(players.values()) });
-        }
-    });
+    socket.on('disconnect', () => handlePlayerLeave(socket.id));
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });
