@@ -1,0 +1,21 @@
+#board {
+    width: 1600px;
+    height: 900px;
+    border: 5px solid black;
+    box-sizing: border-box;
+    position: relative;
+}
+
+.segment {
+    position: absolute;
+    height: 10px;
+    width: 10px;
+    border-radius: 50%;
+    margin-top: -5px;
+    margin-left: -5px;
+    background-color: black;
+}
+
+.segment.hidden {
+    display: none;
+}
