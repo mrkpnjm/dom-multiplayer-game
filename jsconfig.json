@@ -7,9 +7,6 @@
         "moduleResolution": "nodenext",
         "lib": ["ESNext", "DOM"]
     },
-    "include": [
-        "client/**/*.js",
-        "server/**/*.js"
-    ],
+    "include": ["client/**/*.js", "server/**/*.js"],
     "exclude": ["node_modules"]
 }
