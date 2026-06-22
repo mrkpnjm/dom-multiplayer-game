@@ -36,6 +36,7 @@ README.md
 ## Step 2 — Build
 
 ### Person A — Server & Game Logic
+
 Files: `server.js`, `gameEngine.js`
 
 - [ ] Set up Express + Socket.io server
@@ -52,6 +53,7 @@ Files: `server.js`, `gameEngine.js`
 - [ ] Emit `game_over` with winner and scores
 
 ### Person B — Renderer & Input
+
 Files: `renderer.js`, `input.js`, `style.css`
 
 - [ ] Build 30×30 CSS grid using divs
@@ -64,6 +66,7 @@ Files: `renderer.js`, `input.js`, `style.css`
 - [ ] Show visual flash when a snake dies
 
 ### Person C — UI, Lobby, Sounds & Deployment
+
 Files: `index.html`, `ui.js`, `sounds.js`
 
 - [ ] Lobby page: name input, player list, Start button (host only)
@@ -87,20 +90,20 @@ Files: `index.html`, `ui.js`, `sounds.js`
 
 ## Socket Events (shared contract — do not change without telling everyone)
 
-| Event | Direction | Payload |
-|---|---|---|
-| `join` | Client → Server | `{ name }` |
-| `lobby_update` | Server → All | `{ players }` |
-| `start_game` | Client → Server | — |
-| `game_state` | Server → All | `{ snakes, food, scores, timer }` |
-| `input` | Client → Server | `{ direction }` |
-| `player_died` | Server → All | `{ name }` |
-| `pause` | Client → Server | `{ name }` |
-| `game_paused` | Server → All | `{ name }` |
-| `resume` | Client → Server | `{ name }` |
-| `game_resumed` | Server → All | `{ name }` |
-| `quit` | Client → Server | `{ name }` |
-| `game_over` | Server → All | `{ winner, scores }` |
+| Event          | Direction       | Payload                           |
+| -------------- | --------------- | --------------------------------- |
+| `join`         | Client → Server | `{ name }`                        |
+| `lobby_update` | Server → All    | `{ players }`                     |
+| `start_game`   | Client → Server | —                                 |
+| `game_state`   | Server → All    | `{ snakes, food, scores, timer }` |
+| `input`        | Client → Server | `{ direction }`                   |
+| `player_died`  | Server → All    | `{ name }`                        |
+| `pause`        | Client → Server | `{ name }`                        |
+| `game_paused`  | Server → All    | `{ name }`                        |
+| `resume`       | Client → Server | `{ name }`                        |
+| `game_resumed` | Server → All    | `{ name }`                        |
+| `quit`         | Client → Server | `{ name }`                        |
+| `game_over`    | Server → All    | `{ winner, scores }`              |
 
 ---
 
