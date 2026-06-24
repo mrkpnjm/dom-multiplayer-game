@@ -19,3 +19,17 @@
 .segment.hidden {
     display: none;
 }
+
+.food {
+    position: absolute;
+    height: 15px;
+    width: 15px;
+    border-radius: 50%;
+    margin-top: -7.5px;
+    margin-left: -7.5px;
+    background-color: blueviolet;
+}
+
+.food.hidden {
+    display: none;
+}
