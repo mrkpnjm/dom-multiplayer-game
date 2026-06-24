@@ -12,10 +12,10 @@ const FOOD_COUNT = 5;
 const GAME_DURATION = 120;
 
 const STARTING_POSITIONS = [
-    { x: 200,  y: 450, angle: 0   },
+    { x: 200, y: 450, angle: 0 },
     { x: 1400, y: 450, angle: 180 },
-    { x: 800,  y: 150, angle: 90  },
-    { x: 800,  y: 750, angle: 270 },
+    { x: 800, y: 150, angle: 90 },
+    { x: 800, y: 750, angle: 270 },
 ];
 
 function dist(a, b) {
@@ -38,7 +38,7 @@ function createSnake({ x, y, angle }) {
 
 function spawnFood(snakes) {
     const margin = SEGMENT_SIZE * 3;
-    const allTrail = Object.values(snakes).flatMap(s => s.trail);
+    const allTrail = Object.values(snakes).flatMap((s) => s.trail);
 
     let pos;
     let tries = 0;
@@ -48,7 +48,7 @@ function spawnFood(snakes) {
             y: margin + Math.random() * (PLANE_HEIGHT - margin * 2),
         };
         tries++;
-    } while (tries < 30 && allTrail.some(seg => dist(pos, seg) < SEGMENT_SIZE * 2));
+    } while (tries < 30 && allTrail.some((seg) => dist(pos, seg) < SEGMENT_SIZE * 2));
 
     return pos;
 }
@@ -100,7 +100,7 @@ export function tick(state, turningMap) {
             const trailStart = otherId === id ? SAFE_TAIL : 0;
             const body = otherSnake.trail.slice(trailStart);
 
-            if (body.some(seg => dist({ x: snake.x, y: snake.y }, seg) < SEGMENT_SIZE)) {
+            if (body.some((seg) => dist({ x: snake.x, y: snake.y }, seg) < SEGMENT_SIZE)) {
                 state.alive[id] = false;
                 died.push(id);
                 break;
@@ -121,7 +121,7 @@ export function tick(state, turningMap) {
         }
     }
 
-    const alivePlayers = Object.keys(state.alive).filter(id => state.alive[id]);
+    const alivePlayers = Object.keys(state.alive).filter((id) => state.alive[id]);
     if (alivePlayers.length <= 1) {
         return { died, gameOver: true, winnerId: alivePlayers[0] ?? getWinner(state) };
     }

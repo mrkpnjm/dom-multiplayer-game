@@ -25,7 +25,7 @@ let isPaused = false;
 const playerTurning = new Map();
 
 function buildScores() {
-    return Array.from(players.values()).map(p => ({
+    return Array.from(players.values()).map((p) => ({
         ...p,
         score: gameState ? (gameState.scores[p.id] ?? 0) : 0,
     }));
@@ -56,7 +56,7 @@ function handlePlayerLeave(socketId) {
         gameState.alive[socketId] = false;
         io.emit('player_died', { name: player.name });
 
-        const alivePlayers = Object.keys(gameState.alive).filter(id => gameState.alive[id]);
+        const alivePlayers = Object.keys(gameState.alive).filter((id) => gameState.alive[id]);
         if (alivePlayers.length <= 1) {
             endGame(alivePlayers.length === 1 ? alivePlayers[0] : getWinner(gameState));
         }
@@ -67,7 +67,7 @@ function handlePlayerLeave(socketId) {
 
 io.on('connection', (socket) => {
     socket.on('join', ({ name }) => {
-        const nameExists = [...players.values()].some(p => p.name === name);
+        const nameExists = [...players.values()].some((p) => p.name === name);
         if (nameExists || players.size >= 4) return;
 
         players.set(socket.id, {
@@ -97,7 +97,7 @@ io.on('connection', (socket) => {
 
             const { died, gameOver, winnerId } = tick(gameState, playerTurning);
 
-            died.forEach(id => {
+            died.forEach((id) => {
                 const player = players.get(id);
                 if (player) io.emit('player_died', { name: player.name });
             });
@@ -107,7 +107,7 @@ io.on('connection', (socket) => {
                     Object.entries(gameState.snakes).map(([id, snake]) => [
                         id,
                         { segments: getSegments(snake), angle: snake.angle },
-                    ])
+                    ]),
                 ),
                 food: gameState.food,
                 scores: buildScores(),
