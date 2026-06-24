@@ -11,7 +11,6 @@
 
 let previousState = null;
 let currentState = null;
-let previousTimestamp = 0;
 let currentTimestamp = 0;
 const TICK_INTERVAL = 50; // Must match Server's constant, in ms, matches 20 Hz
 
@@ -23,7 +22,7 @@ const positionDiv = (element, position) => {
     element.style.transform = `translate(${position.x}px, ${position.y}px)`;
 };
 
-const getSegment = (snakeId, segmentIndex) => {
+const getSegment = (snakeId, segmentIndex, className = 'segment') => {
     if (!segmentsMap.has(snakeId)) {
         segmentsMap.set(snakeId, []);
     }
@@ -33,15 +32,13 @@ const getSegment = (snakeId, segmentIndex) => {
     // Create divs until the array is long enough to hold segmentIndex.
     while (snakeSegments.length <= segmentIndex) {
         const newDiv = document.createElement('div');
-        newDiv.className = 'segment';
+        newDiv.className = className;
         board.appendChild(newDiv);
         snakeSegments.push(newDiv);
     }
 
     const segment = snakeSegments[segmentIndex];
-
     segment.classList.remove('hidden');
-
     return segment;
 };
 
@@ -62,18 +59,54 @@ const removeSnake = (snakeId) => {
     segmentsMap.delete(snakeId);
 };
 
+const lerp = (startValue, endValue, t) => startValue + (endValue - startValue) * t;
+
+const draw = (alpha) => {
+    if (!currentState) return;
+
+    for (const [snakeId, snakeData] of Object.entries(currentState.snakes)) {
+        const segments = snakeData.segments;
+        for (let i = 0; i < segments.length; i++) {
+            const prevSnake = previousState.snakes[snakeId];
+            const currPos = segments[i];
+            const prevPos = prevSnake && prevSnake.segments[i] ? prevSnake.segments[i] : currPos;
+
+            const dx = currPos.x - prevPos.x;
+            const dy = currPos.y - prevPos.y;
+            const segmentAlpha = Math.abs(dx) > 100 || Math.abs(dy) > 100 ? 1 : alpha;
+
+            positionDiv(getSegment(snakeId, i), {
+                x: lerp(prevPos.x, currPos.x, segmentAlpha),
+                y: lerp(prevPos.y, currPos.y, segmentAlpha),
+            });
+        }
+        hideSegments(snakeId, segments.length);
+    }
+
+    const food = currentState.food;
+    for (let i = 0; i < food.length; i++) {
+        positionDiv(getSegment('__food__', i, 'food'), food[i]);
+    }
+    hideSegments('__food__', food.length);
+};
+
+const loop = (now) => {
+    const alpha = Math.min((now - currentTimestamp) / TICK_INTERVAL, 1);
+    draw(alpha);
+    requestAnimationFrame(loop);
+};
+
 export const init = (socket) => {
     board = document.getElementById('board');
 
     socket.on('game_state', (state) => {
         previousState = currentState;
-        previousTimestamp = currentTimestamp;
         currentState = state;
         currentTimestamp = performance.now();
 
         if (previousState === null) {
             previousState = currentState;
-            previousTimestamp = currentTimestamp;
         }
     });
+    requestAnimationFrame(loop);
 };
