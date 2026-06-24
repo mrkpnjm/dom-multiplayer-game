@@ -1,12 +1,23 @@
-const socket = io();
+// game_state payload (from server, every 50ms):
+// {
+//   snakes: { [id]: { segments: [{x,y}, ...], angle } },  // segments[0] = head
+//   food:   [ {x,y}, ... ],
+//   scores: [ { id, name, color, score }, ... ],           // color lives here
+//   timer:  number,                                        // seconds, counts down
+//   alive:  { [id]: boolean }
+// }
+// Coordinates are in 1600x900 space = board pixels (no scaling needed).
+// Server tick = 50ms (20 Hz).
 
-socket.on('connect', () => {
-    console.log('connected to server, my id is', socket.id);
-});
+let previousState = null;
+let currentState = null;
+let previousTimestamp = 0;
+let currentTimestamp = 0;
+const TICK_INTERVAL = 50; // Must match Server's constant, in ms, matches 20 Hz
 
-const board = document.getElementById('board');
+let board = null;
 
-const segmentsMap = new Map(); // Map<snakeId: [div name]>
+const segmentsMap = new Map(); // Map<snakeId, div[]>
 
 const positionDiv = (element, position) => {
     element.style.transform = `translate(${position.x}px, ${position.y}px)`;
@@ -27,26 +38,42 @@ const getSegment = (snakeId, segmentIndex) => {
         snakeSegments.push(newDiv);
     }
 
-    const returnableDiv = snakeSegments[segmentIndex];
+    const segment = snakeSegments[segmentIndex];
 
-    returnableDiv.classList.remove('hidden');
+    segment.classList.remove('hidden');
 
-    return returnableDiv;
+    return segment;
 };
 
 const hideSegments = (snakeId, segmentsInUse) => {
     const snakeSegments = segmentsMap.get(snakeId);
-    if (!snakeSegments) return ;
+    if (!snakeSegments) return;
 
     for (let i = segmentsInUse; i < snakeSegments.length; i++) {
         snakeSegments[i].classList.add('hidden');
     }
 };
 
-const removeSnakeAfterDisconnect = (snakeId) => {
+const removeSnake = (snakeId) => {
     const snakeSegments = segmentsMap.get(snakeId);
-    if (!snakeSegments) return ;
+    if (!snakeSegments) return;
 
     snakeSegments.forEach((div) => div.remove());
     segmentsMap.delete(snakeId);
+};
+
+export const init = (socket) => {
+    board = document.getElementById('board');
+
+    socket.on('game_state', (state) => {
+        previousState = currentState;
+        previousTimestamp = currentTimestamp;
+        currentState = state;
+        currentTimestamp = performance.now();
+
+        if (previousState === null) {
+            previousState = currentState;
+            previousTimestamp = currentTimestamp;
+        }
+    });
 };

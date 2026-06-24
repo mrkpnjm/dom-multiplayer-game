@@ -23,8 +23,13 @@ export function renderGame(container, socket, navigate) {
     `;
 
     // 2. Dynamically import Person B's scripts ONLY when the game screen loads
-    import('../renderer.js').catch(err => console.error("Failed to load renderer", err));
-    import('../input.js').catch(err => console.error("Failed to load input", err));
+    import('../renderer.js')
+        .then((rendererModule) => rendererModule.init(socket))
+        .catch((err) => console.error('Failed to load renderer', err));
+
+    import('../input.js')
+        .then((inputModule) => inputModule.init(socket))
+        .catch((err) => console.error('Failed to load input', err));
 
     // 3. Handle Game UI Logic
     const pauseMenu = document.getElementById('pause-menu');
@@ -32,16 +37,16 @@ export function renderGame(container, socket, navigate) {
 
     // --- Outgoing Player Actions ---
     document.getElementById('pause-btn').addEventListener('click', () => {
-        socket.emit('pause', { name: "You" }); // Person A will handle finding the real name
+        socket.emit('pause', { name: 'You' }); // Person A will handle finding the real name
     });
 
     document.getElementById('resume-btn').addEventListener('click', () => {
-        socket.emit('resume', { name: "You" });
+        socket.emit('resume', { name: 'You' });
     });
 
     document.getElementById('quit-btn').addEventListener('click', () => {
-        socket.emit('quit', { name: "You" });
-        navigate('lobby'); 
+        socket.emit('quit', { name: 'You' });
+        navigate('lobby');
     });
 
     // --- Incoming Server Events ---
@@ -62,17 +67,23 @@ export function renderGame(container, socket, navigate) {
 
     // Update HUD when server ticks
     // Notice the fixed inline JSDoc import below!
-    socket.on('game_state', /** @param {import('../ui.js').GameStatePayload} payload */ (payload) => {
-        const timer = document.getElementById('timer');
-        const scoreboard = document.getElementById('scoreboard');
+    socket.on(
+        'game_state',
+        /** @param {import('../ui.js').GameStatePayload} payload */ (payload) => {
+            const timer = document.getElementById('timer');
+            const scoreboard = document.getElementById('scoreboard');
 
-        if (timer) timer.innerText = payload.timer.toString();
-        
-        // Example logic to render the scoreboard dynamically
-        if (scoreboard && payload.scores) {
-            scoreboard.innerHTML = payload.scores.map(p => 
-                `<div><span style="color:${p.color}">●</span> ${p.name}: ${p.score}</div>`
-            ).join('');
-        }
-    });
+            if (timer) timer.innerText = payload.timer.toString();
+
+            // Example logic to render the scoreboard dynamically
+            if (scoreboard && payload.scores) {
+                scoreboard.innerHTML = payload.scores
+                    .map(
+                        (p) =>
+                            `<div><span style="color:${p.color}">●</span> ${p.name}: ${p.score}</div>`,
+                    )
+                    .join('');
+            }
+        },
+    );
 }

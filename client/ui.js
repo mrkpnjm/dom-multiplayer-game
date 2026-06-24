@@ -39,8 +39,8 @@ const appContainer = document.getElementById('app');
 // State Manager / Router
 function navigate(viewName, data = null) {
     // Clear out any existing HTML and old event listeners
-    if (appContainer) appContainer.innerHTML = ''; 
-    
+    if (appContainer) appContainer.innerHTML = '';
+
     // Remove all previous socket listeners to prevent duplicates when switching screens
     socket.removeAllListeners('lobby_update');
     socket.removeAllListeners('game_state');
@@ -50,11 +50,9 @@ function navigate(viewName, data = null) {
     // Route to the correct view
     if (viewName === 'lobby') {
         renderLobby(appContainer, socket);
-    } 
-    else if (viewName === 'game') {
+    } else if (viewName === 'game') {
         renderGame(appContainer, socket, navigate);
-    }
-    else if (viewName === 'game_over') {
+    } else if (viewName === 'game_over') {
         renderGameOver(appContainer, socket, navigate, data);
     }
 }
@@ -69,7 +67,9 @@ function renderGameOver(container, socket, navigate, data) {
         </div>
     `;
 
-    const playAgainBtn = /** @type {HTMLButtonElement} */ (document.getElementById('play-again-btn'));
+    const playAgainBtn = /** @type {HTMLButtonElement} */ (
+        document.getElementById('play-again-btn')
+    );
     if (playAgainBtn) {
         playAgainBtn.addEventListener('click', () => {
             navigate('lobby');
@@ -84,10 +84,13 @@ socket.on('start_game', () => {
     navigate('game');
 });
 
-socket.on('game_over', /** @param {GameOverPayload} payload */ (payload) => {
-    playGameOverSound(); // <-- Trigger Game Over Sound
-    navigate('game_over', payload);
-});
+socket.on(
+    'game_over',
+    /** @param {GameOverPayload} payload */ (payload) => {
+        playGameOverSound(); // <-- Trigger Game Over Sound
+        navigate('game_over', payload);
+    },
+);
 
 // Boot up the application
 navigate('lobby');

@@ -20,18 +20,20 @@ export function renderLobby(container, socket) {
     // 2. Attach Event Listeners
     const joinBtn = /** @type {HTMLButtonElement} */ (document.getElementById('join-btn'));
     const nameInput = /** @type {HTMLInputElement} */ (document.getElementById('player-name'));
-    const startGameBtn = /** @type {HTMLButtonElement} */ (document.getElementById('start-game-btn'));
+    const startGameBtn = /** @type {HTMLButtonElement} */ (
+        document.getElementById('start-game-btn')
+    );
 
     joinBtn.addEventListener('click', () => {
         const name = nameInput.value.trim();
         if (name) {
             // Wake up the Web Audio API instantly on this user click
-            initAudio(); 
-            
+            initAudio();
+
             socket.emit('join', { name });
-            
+
             // Prevent spamming and lock in their name
-            joinBtn.disabled = true; 
+            joinBtn.disabled = true;
             nameInput.disabled = true;
         }
     });
@@ -46,10 +48,13 @@ export function renderLobby(container, socket) {
         const list = document.getElementById('player-list');
         if (list && payload.players) {
             // Added a neat little color dot next to their name so they know what color snake they are!
-            list.innerHTML = payload.players.map(p => 
-                `<li><span style="color:${p.color}; font-size: 1.2em;">●</span> ${p.name}</li>`
-            ).join('');
-            
+            list.innerHTML = payload.players
+                .map(
+                    (p) =>
+                        `<li><span style="color:${p.color}; font-size: 1.2em;">●</span> ${p.name}</li>`,
+                )
+                .join('');
+
             // The Lead Player / Host is always the first person in the array
             const isHost = payload.players.length > 0 && payload.players[0].id === socket.id;
             const hasEnoughPlayers = payload.players.length >= 2;
