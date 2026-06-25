@@ -100,12 +100,16 @@ io.on('connection', (socket) => {
         gameLoop = setInterval(() => {
             if (!gameState || isPaused) return;
 
-            const { died, gameOver, winnerId } = tick(gameState, playerTurning);
+            const { died, ateFood, gameOver, winnerId } = tick(gameState, playerTurning);
 
             died.forEach((id) => {
                 const player = players.get(id);
                 if (player) io.emit('player_died', { name: player.name });
             });
+
+            if (ateFood && ateFood.length > 0) {
+                io.emit('food_eaten');
+            }
 
             io.emit('game_state', {
                 snakes: Object.fromEntries(

@@ -1,4 +1,4 @@
-import { playDieSound } from '../sounds.js';
+import { playDieSound, playEatFoodSound } from '../sounds.js';
 
 export function renderGame(container, socket, navigate) {
     // 1. Inject the HTML
@@ -63,6 +63,11 @@ export function renderGame(container, socket, navigate) {
     socket.on('player_died', (payload) => {
         playDieSound();
         console.log(`${payload.name} has died!`);
+    });
+
+    // Trigger the eat sound
+    socket.on('food_eaten', () => {
+        playEatFoodSound();
     });
 
     // Update HUD when server ticks

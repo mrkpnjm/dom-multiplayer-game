@@ -71,6 +71,7 @@ export function createGameState(players) {
 
 export function tick(state, turningMap) {
     const died = [];
+    const ateFood = []; // ---> NEW: Tracker for food eaten this frame
 
     for (const [id, snake] of Object.entries(state.snakes)) {
         if (!state.alive[id]) continue;
@@ -108,6 +109,7 @@ export function tick(state, turningMap) {
         }
     }
 
+    // Food collision logic
     for (const [id, snake] of Object.entries(state.snakes)) {
         if (!state.alive[id]) continue;
 
@@ -117,16 +119,19 @@ export function tick(state, turningMap) {
                 snake.length++;
                 state.food.splice(fi, 1);
                 state.food.push(spawnFood(state.snakes));
+                ateFood.push(id); // Record that this snake ate food
             }
         }
     }
 
     const alivePlayers = Object.keys(state.alive).filter((id) => state.alive[id]);
     if (alivePlayers.length <= 1) {
-        return { died, gameOver: true, winnerId: alivePlayers[0] ?? getWinner(state) };
+        // Include ateFood in the return payload
+        return { died, ateFood, gameOver: true, winnerId: alivePlayers[0] ?? getWinner(state) };
     }
 
-    return { died, gameOver: false, winnerId: null };
+    // Include ateFood in the return payload
+    return { died, ateFood, gameOver: false, winnerId: null };
 }
 
 export function getWinner(state) {
