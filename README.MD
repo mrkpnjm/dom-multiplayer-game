@@ -18,3 +18,9 @@ A real-time, DOM-based multiplayer snake game built for 2-4 players.
 - Use `Arrow Keys` or `A, D keys` to steer your snake.
 - Join the lobby and wait for at least one other player to join.
 - The host can then start the game.
+
+## Try it out
+
+- For testing purposes, we also hosted the latest version of this repository on `https://dom-multiplayer-snake-game.onrender.com/`
+
+- Note: Due to the low computational power and the location of the free version of this hosting platform, it might have some minor fps / stutter issues. While testing on the local machine, the game runs flawlessly.
