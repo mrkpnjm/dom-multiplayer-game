@@ -79,6 +79,11 @@ io.on('connection', (socket) => {
         io.emit('lobby_update', { players: Array.from(players.values()) });
     });
 
+    // Restore lobby state for returning players
+    socket.on('request_lobby_update', () => {
+        socket.emit('lobby_update', { players: Array.from(players.values()) });
+    });
+
     socket.on('start_game', () => {
         if (players.size < 2 || gameLoop) return;
 

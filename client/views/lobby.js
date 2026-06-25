@@ -20,42 +20,41 @@ export function renderLobby(container, socket) {
     // 2. Attach Event Listeners
     const joinBtn = /** @type {HTMLButtonElement} */ (document.getElementById('join-btn'));
     const nameInput = /** @type {HTMLInputElement} */ (document.getElementById('player-name'));
-    const startGameBtn = /** @type {HTMLButtonElement} */ (
-        document.getElementById('start-game-btn')
-    );
+    const startGameBtn = /** @type {HTMLButtonElement} */ (document.getElementById('start-game-btn'));
 
     joinBtn.addEventListener('click', () => {
         const name = nameInput.value.trim();
         if (name) {
-            // Wake up the Web Audio API instantly on this user click
             initAudio();
-
             socket.emit('join', { name });
-
-            // Prevent spamming and lock in their name
             joinBtn.disabled = true;
             nameInput.disabled = true;
         }
     });
 
-    // Only the host will ever see this button to click it
     startGameBtn.addEventListener('click', () => {
         socket.emit('start_game');
     });
 
-    // 3. Listen for Server Updates (specific to the lobby)
+    // ---> NEW: Ask the server for the current lobby state in case we just finished a game
+    socket.emit('request_lobby_update');
+
+    // 3. Listen for Server Updates
     socket.on('lobby_update', (payload) => {
         const list = document.getElementById('player-list');
         if (list && payload.players) {
-            // Added a neat little color dot next to their name so they know what color snake they are!
             list.innerHTML = payload.players
-                .map(
-                    (p) =>
-                        `<li><span style="color:${p.color}; font-size: 1.2em;">●</span> ${p.name}</li>`,
-                )
+                .map((p) => `<li><span style="color:${p.color}; font-size: 1.2em;">●</span> ${p.name}</li>`)
                 .join('');
 
-            // The Lead Player / Host is always the first person in the array
+            // ---> NEW: If we are already in the lobby (returning from a game), lock the join UI
+            const me = payload.players.find(p => p.id === socket.id);
+            if (me) {
+                nameInput.value = me.name;
+                nameInput.disabled = true;
+                joinBtn.disabled = true;
+            }
+
             const isHost = payload.players.length > 0 && payload.players[0].id === socket.id;
             const hasEnoughPlayers = payload.players.length >= 2;
 
