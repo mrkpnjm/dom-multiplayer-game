@@ -9,12 +9,12 @@ A real-time, DOM-based multiplayer snake game built for 2-4 players.
 - Audio engine with retro sound effects.
 
 ## Setup & Installation
-1. Clone the repository: `git clone [your-repo-link]`
+1. Clone the repository: `git clone https://gitea.kood.tech/markpenjam/multi-player`
 2. Install dependencies: `npm install`
 3. Run the server: `npm start`
 4. Access the game at `http://localhost:3000`
 
 ## Gameplay
-- Use `Arrow Keys` or `WASD` to steer your snake.
+- Use `Arrow Keys` or `A, D keys` to steer your snake.
 - Join the lobby and wait for at least one other player to join.
 - The host can then start the game.
