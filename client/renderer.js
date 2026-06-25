@@ -12,27 +12,31 @@
 let previousState = null;
 let currentState = null;
 let currentTimestamp = 0;
-const TICK_INTERVAL = 50; // Must match Server's constant, in ms, matches 20 Hz
+const TICK_INTERVAL = 50;
 
 let board = null;
-
 const segmentsMap = new Map(); // Map<snakeId, div[]>
+let isLooping = false; // Safety lock for the animation loop
 
 const positionDiv = (element, position) => {
     element.style.transform = `translate(${position.x}px, ${position.y}px)`;
 };
 
-const getSegment = (snakeId, segmentIndex, className = 'segment') => {
+const getSegment = (snakeId, segmentIndex, className = 'segment', color = null) => {
     if (!segmentsMap.has(snakeId)) {
         segmentsMap.set(snakeId, []);
     }
 
     const snakeSegments = segmentsMap.get(snakeId);
 
-    // Create divs until the array is long enough to hold segmentIndex.
+    // Create divs until the array is long enough
     while (snakeSegments.length <= segmentIndex) {
         const newDiv = document.createElement('div');
         newDiv.className = className;
+        
+        // Apply the unique player color!
+        if (color) newDiv.style.backgroundColor = color;
+        
         board.appendChild(newDiv);
         snakeSegments.push(newDiv);
     }
@@ -45,7 +49,6 @@ const getSegment = (snakeId, segmentIndex, className = 'segment') => {
 const hideSegments = (snakeId, segmentsInUse) => {
     const snakeSegments = segmentsMap.get(snakeId);
     if (!snakeSegments) return;
-
     for (let i = segmentsInUse; i < snakeSegments.length; i++) {
         snakeSegments[i].classList.add('hidden');
     }
@@ -62,10 +65,24 @@ const removeSnake = (snakeId) => {
 const lerp = (startValue, endValue, t) => startValue + (endValue - startValue) * t;
 
 const draw = (alpha) => {
-    if (!currentState) return;
+    if (!currentState || !board) return;
+
+    // Clean up ghost snakes that died or quit
+    for (const snakeId of segmentsMap.keys()) {
+        if (snakeId !== '__food__' && (!currentState.snakes[snakeId] || !currentState.alive[snakeId])) {
+            removeSnake(snakeId);
+        }
+    }
 
     for (const [snakeId, snakeData] of Object.entries(currentState.snakes)) {
+        if (!currentState.alive[snakeId]) continue; // Skip rendering dead snakes
+
         const segments = snakeData.segments;
+        
+        // Find the player's color from the scoreboard data
+        const playerInfo = currentState.scores.find(p => p.id === snakeId);
+        const color = playerInfo ? playerInfo.color : 'black';
+
         for (let i = 0; i < segments.length; i++) {
             const prevSnake = previousState.snakes[snakeId];
             const currPos = segments[i];
@@ -75,7 +92,7 @@ const draw = (alpha) => {
             const dy = currPos.y - prevPos.y;
             const segmentAlpha = Math.abs(dx) > 100 || Math.abs(dy) > 100 ? 1 : alpha;
 
-            positionDiv(getSegment(snakeId, i), {
+            positionDiv(getSegment(snakeId, i, 'segment', color), {
                 x: lerp(prevPos.x, currPos.x, segmentAlpha),
                 y: lerp(prevPos.y, currPos.y, segmentAlpha),
             });
@@ -91,14 +108,23 @@ const draw = (alpha) => {
 };
 
 const loop = (now) => {
-    const alpha = Math.min((now - currentTimestamp) / TICK_INTERVAL, 1);
-    draw(alpha);
+    // Only draw if the board is actively in the DOM
+    if (document.getElementById('board')) {
+        const alpha = Math.min((now - currentTimestamp) / TICK_INTERVAL, 1);
+        draw(alpha);
+    }
     requestAnimationFrame(loop);
 };
 
 export const init = (socket) => {
     board = document.getElementById('board');
-
+    
+    // Completely reset the rendering memory for the new game!
+    previousState = null;
+    currentState = null;
+    segmentsMap.forEach((_, snakeId) => removeSnake(snakeId));
+    segmentsMap.clear();
+    
     socket.on('game_state', (state) => {
         previousState = currentState;
         currentState = state;
@@ -108,5 +134,10 @@ export const init = (socket) => {
             previousState = currentState;
         }
     });
-    requestAnimationFrame(loop);
+
+    // Ensure we only start the requestAnimationFrame loop ONCE
+    if (!isLooping) {
+        isLooping = true;
+        requestAnimationFrame(loop);
+    }
 };
