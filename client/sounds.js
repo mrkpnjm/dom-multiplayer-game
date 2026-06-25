@@ -6,13 +6,16 @@ const sounds = {
     eat: new Audio('/assets/sounds/eat.mp3'),
     die: new Audio('/assets/sounds/die.mp3'),
     gameOver: new Audio('/assets/sounds/game-over.mp3'),
+    background: new Audio('/assets/sounds/background.mp3'), // ---> NEW: Background music track
 };
 
 // Optional: Adjust volumes if some files are too loud
 sounds.start.volume = 0.5;
-sounds.eat.volume = 0.3;
+sounds.eat.volume = 0.8;
 sounds.die.volume = 0.6;
 sounds.gameOver.volume = 0.5;
+sounds.background.volume = 0.3;
+sounds.background.loop = true;
 
 // We still need an init function triggered by the "Join" button click.
 // Browsers require a user interaction before they allow audio to play.
@@ -31,7 +34,14 @@ export function initAudio() {
 
 export function playStartSound() {
     sounds.start.currentTime = 0; // Rewind to start just in case
-    sounds.start.play().catch((e) => console.error(e));
+    sounds.start.onended = () => {
+        playBackgroundMusic();
+    };
+        sounds.start.play().catch((e) => {
+            console.error(e);
+            // Fallback: If start sound gets blocked, try to play the music anyway
+            playBackgroundMusic();
+    });
 }
 
 export function playEatFoodSound() {
@@ -47,4 +57,27 @@ export function playDieSound() {
 export function playGameOverSound() {
     sounds.gameOver.currentTime = 0;
     sounds.gameOver.play().catch((e) => console.error(e));
+}
+
+export function playBackgroundMusic() {
+    // If the game starts before the user interacts (unlikely, but possible), catch the error gracefully
+    sounds.background.play().catch((e) => console.log('BGM play blocked by browser, waiting for user interaction...'));
+}
+
+export function stopBackgroundMusic() {
+    sounds.background.pause();
+    sounds.background.currentTime = 0;
+}
+
+let isMuted = false;
+
+export function toggleMute() {
+    isMuted = !isMuted;
+    
+    // Loop through every sound in our 'sounds' object and mute/unmute them
+    Object.values(sounds).forEach((audioElement) => {
+        audioElement.muted = isMuted;
+    });
+
+    return isMuted;
 }

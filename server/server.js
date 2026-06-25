@@ -89,43 +89,50 @@ io.on('connection', (socket) => {
 
         gameState = createGameState(Array.from(players.values()));
         isPaused = false;
+        
+        // This tells the clients to start their 3-2-1 countdown and play the sound
         io.emit('start_game');
 
-        timerInterval = setInterval(() => {
-            if (!gameState || isPaused) return;
-            gameState.timer--;
-            if (gameState.timer <= 0) endGame(getWinner(gameState));
-        }, 1000);
+        setTimeout(() => {
+            // Safety check: Ensure the game wasn't somehow cancelled during the 3.5 second wait
+            if (!gameState) return;
 
-        gameLoop = setInterval(() => {
-            if (!gameState || isPaused) return;
+            timerInterval = setInterval(() => {
+                if (!gameState || isPaused) return;
+                gameState.timer--;
+                if (gameState.timer <= 0) endGame(getWinner(gameState));
+            }, 1000);
 
-            const { died, ateFood, gameOver, winnerId } = tick(gameState, playerTurning);
+            gameLoop = setInterval(() => {
+                if (!gameState || isPaused) return;
 
-            died.forEach((id) => {
-                const player = players.get(id);
-                if (player) io.emit('player_died', { name: player.name });
-            });
+                const { died, ateFood, gameOver, winnerId } = tick(gameState, playerTurning);
 
-            if (ateFood && ateFood.length > 0) {
-                io.emit('food_eaten');
-            }
+                died.forEach((id) => {
+                    const player = players.get(id);
+                    if (player) io.emit('player_died', { name: player.name });
+                });
 
-            io.emit('game_state', {
-                snakes: Object.fromEntries(
-                    Object.entries(gameState.snakes).map(([id, snake]) => [
-                        id,
-                        { segments: getSegments(snake), angle: snake.angle },
-                    ]),
-                ),
-                food: gameState.food,
-                scores: buildScores(),
-                timer: gameState.timer,
-                alive: gameState.alive,
-            });
+                if (ateFood && ateFood.length > 0) {
+                    io.emit('food_eaten');
+                }
 
-            if (gameOver) endGame(winnerId);
-        }, TICK_INTERVAL);
+                io.emit('game_state', {
+                    snakes: Object.fromEntries(
+                        Object.entries(gameState.snakes).map(([id, snake]) => [
+                            id,
+                            { segments: getSegments(snake), angle: snake.angle },
+                        ]),
+                    ),
+                    food: gameState.food,
+                    scores: buildScores(),
+                    timer: gameState.timer,
+                    alive: gameState.alive,
+                });
+
+                if (gameOver) endGame(winnerId);
+            }, TICK_INTERVAL);
+        }, 3500); // 3.5 seconds (3, 2, 1, GO!)
     });
 
     socket.on('input', ({ turning }) => {

@@ -1,9 +1,29 @@
-import { playDieSound, playEatFoodSound } from '../sounds.js';
+import { 
+    playStartSound,
+    playDieSound, 
+    playEatFoodSound,
+    stopBackgroundMusic,
+    toggleMute 
+} from '../sounds.js';
 
 export function renderGame(container, socket, navigate) {
-    // 1. Inject the HTML
+    // 1. Inject the HTML with the countdown overlay
     container.innerHTML = `
-        <div id="game-screen" class="screen">
+        <div id="game-screen" class="screen" style="position: relative;">
+            
+            <div id="countdown-overlay" style="
+                position: absolute; 
+                top: 50%; 
+                left: 50%; 
+                transform: translate(-50%, -50%); 
+                font-size: 5rem; 
+                color: #ff8c00; 
+                text-shadow: 0 0 30px #ff8c00; 
+                font-weight: bold; 
+                z-index: 1000; 
+                pointer-events: none;
+            "></div>
+
             <div id="board"></div> 
             
             <div id="hud">
@@ -11,7 +31,10 @@ export function renderGame(container, socket, navigate) {
                 <div id="scoreboard"></div>
             </div>
 
-            <button id="pause-btn">Pause</button>
+            <div id="controls" style="display: flex; justify-content: center; gap: 10px;">
+                <button id="pause-btn">Pause</button>
+                <button id="mute-btn">Mute</button>
+            </div>
 
             <div id="pause-menu" class="hidden">
                 <h2>Game Paused</h2>
@@ -21,6 +44,37 @@ export function renderGame(container, socket, navigate) {
             </div>
         </div>
     `;
+
+    // Start background music as soon as the game screen loads
+    playStartSound();
+
+    // Run the visual countdown synced to 1 second (1000ms) beats
+    const overlay = document.getElementById('countdown-overlay');
+    const countdownSteps = ['3', '2', '1', 'GO!'];
+    let stepIndex = 0;
+
+    // Show the first number immediately
+    if (overlay) {
+        overlay.innerText = countdownSteps[stepIndex];
+    }
+
+    // Update every second to match the traffic light sound
+    const countdownInterval = setInterval(() => {
+        stepIndex++;
+        
+        if (stepIndex < countdownSteps.length) {
+            if (overlay) {
+                overlay.innerText = countdownSteps[stepIndex];
+                // Optional: Add a CSS animation class here if you want it to "pulse"
+                overlay.style.animation = 'none';
+                setTimeout(() => overlay.style.animation = '', 10); // Trigger reflow to restart animation
+            }
+        } else {
+            // End of countdown
+            clearInterval(countdownInterval);
+            if (overlay) overlay.style.display = 'none'; // Hide the text
+        }
+    }, 1000);
 
     // 2. Dynamically import Person B's scripts ONLY when the game screen loads
     import('../renderer.js')
@@ -34,10 +88,11 @@ export function renderGame(container, socket, navigate) {
     // 3. Handle Game UI Logic
     const pauseMenu = document.getElementById('pause-menu');
     const pauseMessage = document.getElementById('pause-message');
+    const muteBtn = document.getElementById('mute-btn');
 
     // --- Outgoing Player Actions ---
     document.getElementById('pause-btn').addEventListener('click', () => {
-        socket.emit('pause', { name: 'You' }); // Person A will handle finding the real name
+        socket.emit('pause', { name: 'You' }); 
     });
 
     document.getElementById('resume-btn').addEventListener('click', () => {
@@ -46,7 +101,14 @@ export function renderGame(container, socket, navigate) {
 
     document.getElementById('quit-btn').addEventListener('click', () => {
         socket.emit('quit', { name: 'You' });
+        stopBackgroundMusic(); 
         navigate('lobby');
+    });
+
+    // Mute Button Listener
+    muteBtn.addEventListener('click', () => {
+        const currentlyMuted = toggleMute();
+        muteBtn.innerText = currentlyMuted ? 'Unmute' : 'Mute';
     });
 
     // --- Incoming Server Events ---
@@ -70,8 +132,12 @@ export function renderGame(container, socket, navigate) {
         playEatFoodSound();
     });
 
+    // Stop music on game over
+    socket.on('game_over', (payload) => {
+        stopBackgroundMusic();
+    });
+
     // Update HUD when server ticks
-    // Notice the fixed inline JSDoc import below!
     socket.on(
         'game_state',
         /** @param {import('../ui.js').GameStatePayload} payload */ (payload) => {
@@ -80,7 +146,6 @@ export function renderGame(container, socket, navigate) {
 
             if (timer) timer.innerText = payload.timer.toString();
 
-            // Example logic to render the scoreboard dynamically
             if (scoreboard && payload.scores) {
                 scoreboard.innerHTML = payload.scores
                     .map(
