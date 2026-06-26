@@ -108,6 +108,14 @@ const draw = (alpha) => {
         positionDiv(getSegment('__food__', i, 'food'), food[i]);
     }
     hideSegments('__food__', food.length);
+
+    if (currentState.powerUp) {
+        // Use a new CSS class called 'powerup-item'
+        positionDiv(getSegment('__powerup__', 0, 'powerup-item'), currentState.powerUp);
+    } else {
+        hideSegments('__powerup__', 0);
+    }
+
 };
 
 const loop = (now) => {

@@ -107,7 +107,8 @@ io.on('connection', (socket) => {
             gameLoop = setInterval(() => {
                 if (!gameState || isPaused) return;
 
-                const { died, ateFood, gameOver, winnerId } = tick(gameState, playerTurning);
+                // ---> CHANGED: Destructure atePowerUp from the tick result
+                const { died, ateFood, atePowerUp, gameOver, winnerId } = tick(gameState, playerTurning);
 
                 died.forEach((id) => {
                     const player = players.get(id);
@@ -118,6 +119,11 @@ io.on('connection', (socket) => {
                     io.emit('food_eaten');
                 }
 
+                // ---> NEW: Emit a special event when the power-up is grabbed
+                if (atePowerUp && atePowerUp.length > 0) {
+                    io.emit('powerup_eaten');
+                }
+
                 io.emit('game_state', {
                     snakes: Object.fromEntries(
                         Object.entries(gameState.snakes).map(([id, snake]) => [
@@ -126,6 +132,7 @@ io.on('connection', (socket) => {
                         ]),
                     ),
                     food: gameState.food,
+                    powerUp: gameState.powerUp, // Sends powerup location to clients
                     scores: buildScores(),
                     timer: gameState.timer,
                     alive: gameState.alive,

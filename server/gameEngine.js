@@ -10,6 +10,7 @@ const INITIAL_LENGTH = 5;
 const SAFE_TAIL = TRAIL_SPACING * 10; // head can't hit first 10 body segments (self-collision)
 const FOOD_COUNT = 5;
 const GAME_DURATION = 120;
+const POWERUP_DURATION = 100; // 5 seconds (100 ticks * 50ms)
 
 const STARTING_POSITIONS = [
     { x: 200, y: 450, angle: 0 },
@@ -33,7 +34,7 @@ function createSnake({ x, y, angle }) {
             y: y - Math.sin(rad) * i * SNAKE_SPEED,
         });
     }
-    return { x, y, angle, trail, length: INITIAL_LENGTH };
+    return { x, y, angle, trail, length: INITIAL_LENGTH, powerupTimer: 0 };
 }
 
 function spawnFood(snakes) {
@@ -53,43 +54,57 @@ function spawnFood(snakes) {
     return pos;
 }
 
+// ---> RESTORED: This function was accidentally deleted!
 export function createGameState(players) {
     const snakes = {};
     const alive = {};
     const scores = {};
-
     players.forEach((player, i) => {
         snakes[player.id] = createSnake(STARTING_POSITIONS[i]);
         alive[player.id] = true;
         scores[player.id] = 0;
     });
-
     const food = Array.from({ length: FOOD_COUNT }, () => spawnFood(snakes));
 
-    return { snakes, alive, scores, food, timer: GAME_DURATION };
+    return { snakes, alive, scores, food, powerUp: null, timer: GAME_DURATION };
 }
 
 export function tick(state, turningMap) {
     const died = [];
-    const ateFood = []; // ---> NEW: Tracker for food eaten this frame
+    const ateFood = [];
+    const atePowerUp = []; 
 
+    // Randomly spawn a power-up (~0.5% chance per tick = roughly every 10 seconds)
+    if (!state.powerUp && Math.random() < 0.005) {
+        state.powerUp = spawnFood(state.snakes); // Reuse the safe food spawning logic
+    }
+
+    // Movement and Turning Logic
     for (const [id, snake] of Object.entries(state.snakes)) {
         if (!state.alive[id]) continue;
 
-        const turning = turningMap.get(id);
-        if (turning === 'left') snake.angle = (snake.angle - TURN_SPEED + 360) % 360;
-        if (turning === 'right') snake.angle = (snake.angle + TURN_SPEED) % 360;
+        // If powered up, process movement TWICE in one tick!
+        const moves = snake.powerupTimer > 0 ? 2 : 1;
+        if (snake.powerupTimer > 0) snake.powerupTimer--;
 
-        const rad = (snake.angle * Math.PI) / 180;
-        snake.x += Math.cos(rad) * SNAKE_SPEED;
-        snake.y += Math.sin(rad) * SNAKE_SPEED;
-        snake.trail.unshift({ x: snake.x, y: snake.y });
+        for (let m = 0; m < moves; m++) {
+            const turning = turningMap.get(id);
+            if (turning === 'left') snake.angle = (snake.angle - TURN_SPEED + 360) % 360;
+            if (turning === 'right') snake.angle = (snake.angle + TURN_SPEED) % 360;
+
+            const rad = (snake.angle * Math.PI) / 180;
+            snake.x += Math.cos(rad) * SNAKE_SPEED;
+            snake.y += Math.sin(rad) * SNAKE_SPEED;
+            snake.trail.unshift({ x: snake.x, y: snake.y });
+        }
+        
+        // Trim the tail outside the loop so visual length stays perfect
         snake.trail = snake.trail.slice(0, (snake.length + 1) * TRAIL_SPACING);
     }
 
+    // Wall & Player Collision Logic
     for (const [id, snake] of Object.entries(state.snakes)) {
         if (!state.alive[id]) continue;
-
         if (snake.x < 0 || snake.x > PLANE_WIDTH || snake.y < 0 || snake.y > PLANE_HEIGHT) {
             state.alive[id] = false;
             died.push(id);
@@ -100,7 +115,6 @@ export function tick(state, turningMap) {
             if (!state.alive[otherId] && otherId !== id) continue;
             const trailStart = otherId === id ? SAFE_TAIL : 0;
             const body = otherSnake.trail.slice(trailStart);
-
             if (body.some((seg) => dist({ x: snake.x, y: snake.y }, seg) < SEGMENT_SIZE)) {
                 state.alive[id] = false;
                 died.push(id);
@@ -109,29 +123,38 @@ export function tick(state, turningMap) {
         }
     }
 
-    // Food collision logic
+    // Food & PowerUp Collision logic
     for (const [id, snake] of Object.entries(state.snakes)) {
         if (!state.alive[id]) continue;
-
+        
+        // Normal Food
         for (let fi = state.food.length - 1; fi >= 0; fi--) {
             if (dist({ x: snake.x, y: snake.y }, state.food[fi]) < SEGMENT_SIZE * 1.5) {
                 state.scores[id]++;
                 snake.length++;
                 state.food.splice(fi, 1);
                 state.food.push(spawnFood(state.snakes));
-                ateFood.push(id); // Record that this snake ate food
+                ateFood.push(id); 
             }
+        }
+
+        // PowerUp Collision
+        if (state.powerUp && dist({ x: snake.x, y: snake.y }, state.powerUp) < SEGMENT_SIZE * 1.5) {
+            // ---> FIXED: Using the variable instead of hardcoded 100
+            snake.powerupTimer = POWERUP_DURATION; 
+            state.powerUp = null; // Remove it from the board
+            
+            atePowerUp.push(id); 
         }
     }
 
     const alivePlayers = Object.keys(state.alive).filter((id) => state.alive[id]);
+    
     if (alivePlayers.length <= 1) {
-        // Include ateFood in the return payload
-        return { died, ateFood, gameOver: true, winnerId: alivePlayers[0] ?? getWinner(state) };
+        return { died, ateFood, atePowerUp, gameOver: true, winnerId: alivePlayers[0] ?? getWinner(state) };
     }
 
-    // Include ateFood in the return payload
-    return { died, ateFood, gameOver: false, winnerId: null };
+    return { died, ateFood, atePowerUp, gameOver: false, winnerId: null };
 }
 
 export function getWinner(state) {

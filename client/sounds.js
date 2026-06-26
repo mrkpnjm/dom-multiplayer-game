@@ -8,6 +8,7 @@ const sounds = {
     gameOver: new Audio('/assets/sounds/game-over.mp3'),
     victory: new Audio('/assets/sounds/victory.mp3'),
     background: new Audio('/assets/sounds/background.mp3'),
+    powerup: new Audio('/assets/sounds/powerup.mp3'),
 };
 
 // Optional: Adjust volumes if some files are too loud
@@ -16,6 +17,7 @@ sounds.eat.volume = 0.8;
 sounds.die.volume = 0.6;
 sounds.gameOver.volume = 0.5;
 sounds.background.volume = 0.3;
+sounds.powerup.volume = 0.4;
 sounds.victory.volume = 0.6;
 sounds.background.loop = true;
 
@@ -72,6 +74,11 @@ export function playBackgroundMusic() {
 export function stopBackgroundMusic() {
     sounds.background.pause();
     sounds.background.currentTime = 0;
+}
+
+export function playPowerUpSound() {
+    sounds.powerup.currentTime = 0;
+    sounds.powerup.play().catch((e) => console.error(e));
 }
 
 export function playVictorySound() {

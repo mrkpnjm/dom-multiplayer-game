@@ -4,8 +4,9 @@ import {
     playEatFoodSound,
     stopBackgroundMusic,
     toggleMute,
-    playVictorySound,   // ---> NEW: Import victory sound
-    playGameOverSound,   // ---> NEW: Import game over sound
+    playVictorySound, 
+    playGameOverSound,
+    playPowerUpSound
 } from '../sounds.js';
 
 import {
@@ -207,6 +208,10 @@ export function renderGame(container, socket, navigate) {
     // Trigger the eat sound
     socket.on('food_eaten', () => {
         playEatFoodSound();
+    });
+
+    socket.on('powerup_eaten', () => {
+        playPowerUpSound();
     });
 
     // Hand our game_over logic to ui.js's relay instead of binding a socket listener.
