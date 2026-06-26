@@ -21,6 +21,6 @@ A real-time, DOM-based multiplayer snake game built for 2-4 players.
 
 ## Try it out
 
-- For testing purposes, we also hosted the latest version of this repository on `https://dom-multiplayer-snake-game.onrender.com/`
+- For testing purposes, we also hosted the latest version of this repository on `https://multi-player-t40o.onrender.com/`
 
 - Note: Due to the low computational power and the location of the free version of this hosting platform, it might have some minor fps / stutter issues. While testing on the local machine, the game runs flawlessly.
