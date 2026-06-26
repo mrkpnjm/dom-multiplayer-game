@@ -3,7 +3,9 @@ import {
     playDieSound, 
     playEatFoodSound,
     stopBackgroundMusic,
-    toggleMute 
+    toggleMute,
+    playVictorySound,   // ---> NEW: Import victory sound
+    playGameOverSound,   // ---> NEW: Import game over sound
 } from '../sounds.js';
 
 import {
@@ -96,6 +98,7 @@ export function renderGame(container, socket, navigate) {
     const pauseMenu = document.getElementById('pause-menu');
     const pauseMessage = document.getElementById('pause-message');
     const muteBtn = document.getElementById('mute-btn');
+    
     // --- End-of-game result burst state ---
     let myName = null;
     let burstStarted = false;
@@ -139,14 +142,18 @@ export function renderGame(container, socket, navigate) {
 
         burstStarted = true;
         setBurstHandlingExit(true);
-        if (payload.winner === myName) {
+        
+        // ---> NEW: Check socket.id directly against winnerId, fallback to names
+        if (payload.winnerId === socket.id || payload.winner === myName) {
+            playVictorySound(); // ---> NEW: Play victory music!
             showStarBurst('You win!', () => {
                 navigateWhenReady();
-            })
+            });
         } else {
+            playGameOverSound(); // ---> NEW: Play game over music
             showStarBurst('You lose!', () => {
                 navigateWhenReady();
-            })
+            });
         }
     }
 
@@ -190,9 +197,10 @@ export function renderGame(container, socket, navigate) {
         if (payload.name === myName && !burstStarted) {
             burstStarted = true;
             setBurstHandlingExit(true);
+            playGameOverSound(); // ---> NEW: Play game over sound on mid-game death
             showStarBurst('You lose!', () => {
                 navigateWhenReady();
-            })
+            });
         }
     });
 

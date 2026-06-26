@@ -6,7 +6,8 @@ const sounds = {
     eat: new Audio('/assets/sounds/eat.mp3'),
     die: new Audio('/assets/sounds/die.mp3'),
     gameOver: new Audio('/assets/sounds/game-over.mp3'),
-    background: new Audio('/assets/sounds/background.mp3'), // ---> NEW: Background music track
+    victory: new Audio('/assets/sounds/victory.mp3'),
+    background: new Audio('/assets/sounds/background.mp3'),
 };
 
 // Optional: Adjust volumes if some files are too loud
@@ -15,6 +16,7 @@ sounds.eat.volume = 0.8;
 sounds.die.volume = 0.6;
 sounds.gameOver.volume = 0.5;
 sounds.background.volume = 0.3;
+sounds.victory.volume = 0.6;
 sounds.background.loop = true;
 
 // We still need an init function triggered by the "Join" button click.
@@ -55,18 +57,30 @@ export function playDieSound() {
 }
 
 export function playGameOverSound() {
+    // Instantly cut off any death sounds
+    sounds.die.pause();
+    sounds.die.currentTime = 0;
+
     sounds.gameOver.currentTime = 0;
     sounds.gameOver.play().catch((e) => console.error(e));
 }
 
 export function playBackgroundMusic() {
-    // If the game starts before the user interacts (unlikely, but possible), catch the error gracefully
-    sounds.background.play().catch((e) => console.log('BGM play blocked by browser, waiting for user interaction...'));
+    sounds.background.play().catch(() => console.log('BGM play blocked by browser, waiting for user interaction...'));
 }
 
 export function stopBackgroundMusic() {
     sounds.background.pause();
     sounds.background.currentTime = 0;
+}
+
+export function playVictorySound() {
+    // Instantly cut off the opponent's death sound
+    sounds.die.pause();
+    sounds.die.currentTime = 0;
+
+    sounds.victory.currentTime = 0;
+    sounds.victory.play().catch((e) => console.error(e));
 }
 
 let isMuted = false;

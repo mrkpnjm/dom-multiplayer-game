@@ -40,6 +40,7 @@ function endGame(winnerId) {
     const winner = players.get(winnerId);
     io.emit('game_over', {
         winner: winner ? winner.name : 'Nobody',
+        winnerId: winnerId,
         scores: buildScores(),
     });
 

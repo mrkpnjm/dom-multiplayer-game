@@ -29,7 +29,7 @@
 // Import your views and sounds
 import { renderLobby } from './views/lobby.js';
 import { renderGame } from './views/game.js';
-import { playStartSound, playGameOverSound } from './sounds.js'; // <-- Sound imports active
+import { playStartSound} from './sounds.js';
 import { relayGameOver, isBurstHandlingExit, resetStarBurst } from './starBurst.js';
 
 // Global Socket Connection
@@ -43,12 +43,12 @@ function navigate(viewName, data = null) {
     if (appContainer) appContainer.innerHTML = '';
 
     // Remove all previous socket listeners to prevent duplicates when switching screens
-    socket.removeAllListeners('lobby_update');
-    socket.removeAllListeners('game_state');
-    socket.removeAllListeners('game_paused');
-    socket.removeAllListeners('game_resumed');
-    socket.removeAllListeners('player_died');
-    socket.removeAllListeners('food_eaten');
+    socket.off('lobby_update');
+    socket.off('game_state');
+    socket.off('game_paused');
+    socket.off('game_resumed');
+    socket.off('player_died');
+    socket.off('food_eaten');
 
     // Route to the correct view
     if (viewName === 'lobby') {
@@ -84,14 +84,13 @@ function renderGameOver(container, socket, navigate, data) {
 
 socket.on('start_game', () => {
     resetStarBurst(); // clear any leftover burst state before the new round registers its own
-    playStartSound(); // <-- Trigger Start Sound
+    playStartSound(); // Trigger Start Sound
     navigate('game');
 });
 
 socket.on(
     'game_over',
     /** @param {GameOverPayload} payload */ (payload) => {
-        playGameOverSound(); // <-- Trigger Game Over Sound
         
         // Hand the result to the game view's burst logic. If it handled it (or a
         // burst is already running the exit), let the burst own the transition to
