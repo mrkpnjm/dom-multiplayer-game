@@ -3,12 +3,13 @@ import { initAudio } from '../sounds.js';
 export function renderLobby(container, socket) {
     // 1. Inject the HTML
     container.innerHTML = `
-        <div id="lobby-screen" class="screen">
+        <div id="lobby-screen" class="screen" style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
             <h1>Snake IO</h1>
+            
             <input type="text" id="player-name" placeholder="Enter your name" />
             <button id="join-btn">Join Game</button>
             
-            <div id="join-error" style="color: #e74c3c; margin-top: 10px; font-weight: bold; display: none;"></div>
+            <div id="join-error" style="color: #e74c3c; font-weight: bold; display: none;"></div>
             
             <div id="player-list-container">
                 <h3>Players Waiting:</h3>
@@ -23,14 +24,12 @@ export function renderLobby(container, socket) {
     const joinBtn = /** @type {HTMLButtonElement} */ (document.getElementById('join-btn'));
     const nameInput = /** @type {HTMLInputElement} */ (document.getElementById('player-name'));
     const startGameBtn = /** @type {HTMLButtonElement} */ (document.getElementById('start-game-btn'));
-    const errorText = document.getElementById('join-error'); // NEW
+    const errorText = document.getElementById('join-error');
 
     joinBtn.addEventListener('click', () => {
         const name = nameInput.value.trim();
         if (name) {
             initAudio();
-            
-            // Hide the error text if they are trying again
             if (errorText) errorText.style.display = 'none';
 
             socket.emit('join', { name });
@@ -43,12 +42,9 @@ export function renderLobby(container, socket) {
         socket.emit('start_game');
     });
 
-    // Ask the server for the current lobby state in case we just finished a game
     socket.emit('request_lobby_update');
 
     // 3. Listen for Server Updates
-
-    // Listen for rejections and unlock the UI
     socket.on('join_error', (payload) => {
         joinBtn.disabled = false;
         nameInput.disabled = false;
@@ -65,12 +61,11 @@ export function renderLobby(container, socket) {
                 .map((p) => `<li><span style="color:${p.color}; font-size: 1.2em;">●</span> ${p.name}</li>`)
                 .join('');
 
-            // If we are already in the lobby (returning from a game), lock the join UI
+            // Hide join UI if we are already in the lobby
             const me = payload.players.find(p => p.id === socket.id);
             if (me) {
-                nameInput.value = me.name;
-                nameInput.disabled = true;
-                joinBtn.disabled = true;
+                nameInput.style.display = 'none';
+                joinBtn.style.display = 'none';
                 if (errorText) errorText.style.display = 'none';
             }
 
