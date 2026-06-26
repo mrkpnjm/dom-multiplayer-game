@@ -96,10 +96,21 @@ export const showStarBurst = (text, onComplete) => {
         return;
     }
 
+    // Generate the star shape once and clip BOTH layers to it so they match.
+    const clip = makeStarBurst();
+
+    // Outer wrapper: clipped to the star, painted the outline color via CSS.
     const burstDiv = document.createElement('div');
     burstDiv.classList.add('star-burst');
-    burstDiv.textContent = text;
-    burstDiv.style.clipPath = makeStarBurst();
+    burstDiv.style.clipPath = clip;
+
+    // Inner layer: same clip, inset by CSS, painted the fill color, holds the text.
+    const innerDiv = document.createElement('div');
+    innerDiv.classList.add('star-burst-inner');
+    innerDiv.style.clipPath = clip;
+    innerDiv.textContent = text;
+
+    burstDiv.appendChild(innerDiv);
     board.appendChild(burstDiv);
     activeBurst = burstDiv;
 
