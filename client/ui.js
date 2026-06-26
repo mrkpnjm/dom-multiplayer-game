@@ -30,6 +30,7 @@
 import { renderLobby } from './views/lobby.js';
 import { renderGame } from './views/game.js';
 import { playStartSound, playGameOverSound } from './sounds.js'; // <-- Sound imports active
+import { relayGameOver, isBurstHandlingExit, resetStarBurst } from './starBurst.js';
 
 // Global Socket Connection
 // @ts-ignore
@@ -46,6 +47,8 @@ function navigate(viewName, data = null) {
     socket.removeAllListeners('game_state');
     socket.removeAllListeners('game_paused');
     socket.removeAllListeners('game_resumed');
+    socket.removeAllListeners('player_died');
+    socket.removeAllListeners('food_eaten');
 
     // Route to the correct view
     if (viewName === 'lobby') {
@@ -80,6 +83,7 @@ function renderGameOver(container, socket, navigate, data) {
 // --- Global Server Events that trigger routing ---
 
 socket.on('start_game', () => {
+    resetStarBurst(); // clear any leftover burst state before the new round registers its own
     playStartSound(); // <-- Trigger Start Sound
     navigate('game');
 });
@@ -88,6 +92,12 @@ socket.on(
     'game_over',
     /** @param {GameOverPayload} payload */ (payload) => {
         playGameOverSound(); // <-- Trigger Game Over Sound
+        
+        // Hand the result to the game view's burst logic. If it handled it (or a
+        // burst is already running the exit), let the burst own the transition to
+        // Game Over; otherwise navigate here as a fallback.
+        const burstOngoing = relayGameOver(payload);
+        if (burstOngoing || isBurstHandlingExit()) return;
         navigate('game_over', payload);
     },
 );

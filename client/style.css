@@ -25,6 +25,11 @@ h1, h2, h3 {
     line-height: 1.5;
 }
 
+#game-screen {
+    transform: scale(0.95);
+    transform-origin: center;
+}
+
 /* The Game Board */
 
 #board {
@@ -170,4 +175,48 @@ ul {
 
 .hidden {
     display: none !important;
+}
+
+.star-burst {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    height: 80%;
+    box-sizing: border-box;
+    z-index: 200;
+    pointer-events: none;
+}
+
+.star-burst-inner {
+    position: absolute;
+    /* inset by the outline thickness on all sides */
+    top: 25px;
+    left: 25px;
+    right: 25px;
+    bottom: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: black;
+    font-size: 48px;
+    font-family: 'Press Start 2P', cursive;
+}
+
+/* state-1: yellow fill, red outline */
+.star-burst.state-1 {
+    background: #ff4040;        /* outline color (shows around the edges) */
+}
+.star-burst.state-1 .star-burst-inner {
+    background: #ffd23f;        /* fill color */
+}
+
+/* state-2: red fill, yellow outline */
+.star-burst.state-2 {
+    background: #ffd23f;        /* outline color */
+}
+.star-burst.state-2 .star-burst-inner {
+    background: #ff4040;        /* fill color */
 }
