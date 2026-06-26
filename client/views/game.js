@@ -21,6 +21,21 @@ export function renderGame(container, socket, navigate) {
     container.innerHTML = `
         <div id="game-screen" class="screen" style="position: relative;">
             
+            <div id="game-notifications" style="
+                position: absolute; 
+                top: 20px; 
+                left: 50%; 
+                transform: translateX(-50%); 
+                font-size: 1.5rem; 
+                color: #ffffff; 
+                text-shadow: 0 0 10px #000000; 
+                font-weight: bold; 
+                z-index: 1000; 
+                pointer-events: none;
+                opacity: 0; 
+                transition: opacity 0.3s;
+            "></div>
+
             <div id="countdown-overlay" style="
                 position: absolute; 
                 top: 50%; 
@@ -100,6 +115,21 @@ export function renderGame(container, socket, navigate) {
     const pauseMessage = document.getElementById('pause-message');
     const muteBtn = document.getElementById('mute-btn');
     
+    // ---> NEW: Helper to flash messages on the screen
+    let notifTimeout;
+    const showNotification = (message) => {
+        const notif = document.getElementById('game-notifications');
+        if (!notif) return;
+        
+        notif.innerText = message;
+        notif.style.opacity = '1';
+        
+        clearTimeout(notifTimeout);
+        notifTimeout = setTimeout(() => {
+            notif.style.opacity = '0';
+        }, 3000); // Fades away after 3 seconds
+    };
+
     // --- End-of-game result burst state ---
     let myName = null;
     let burstStarted = false;
@@ -144,14 +174,14 @@ export function renderGame(container, socket, navigate) {
         burstStarted = true;
         setBurstHandlingExit(true);
         
-        // ---> NEW: Check socket.id directly against winnerId, fallback to names
+        // Check socket.id directly against winnerId, fallback to names
         if (payload.winnerId === socket.id || payload.winner === myName) {
-            playVictorySound(); // ---> NEW: Play victory music!
+            playVictorySound(); // Play victory music!
             showStarBurst('You win!', () => {
                 navigateWhenReady();
             });
         } else {
-            playGameOverSound(); // ---> NEW: Play game over music
+            playGameOverSound(); // Play game over music
             showStarBurst('You lose!', () => {
                 navigateWhenReady();
             });
@@ -184,10 +214,18 @@ export function renderGame(container, socket, navigate) {
     socket.on('game_paused', (payload) => {
         if (pauseMenu) pauseMenu.classList.remove('hidden');
         if (pauseMessage) pauseMessage.innerText = `${payload.name} paused the game.`;
+        
+        showNotification(`${payload.name} paused the game.`); // ---> NEW
     });
 
-    socket.on('game_resumed', () => {
+    socket.on('game_resumed', (payload) => { // ---> CHANGED: Added payload parameter
         if (pauseMenu) pauseMenu.classList.add('hidden');
+        
+        showNotification(`${payload.name} resumed the game.`); // ---> NEW
+    });
+
+    socket.on('player_quit', (payload) => { // ---> NEW: Listen for the quit event
+        showNotification(`${payload.name} has quit the game.`);
     });
 
     // Play the die sound for every death; if it was MY snake, run the lose burst.
@@ -198,7 +236,7 @@ export function renderGame(container, socket, navigate) {
         if (payload.name === myName && !burstStarted) {
             burstStarted = true;
             setBurstHandlingExit(true);
-            playGameOverSound(); // ---> NEW: Play game over sound on mid-game death
+            playGameOverSound(); // Play game over sound on mid-game death
             showStarBurst('You lose!', () => {
                 navigateWhenReady();
             });

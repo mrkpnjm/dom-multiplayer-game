@@ -53,6 +53,9 @@ function handlePlayerLeave(socketId) {
 
     players.delete(socketId);
 
+    // Broadcast to everyone that this player quit
+    io.emit('player_quit', { name: player.name });
+
     if (gameState) {
         gameState.alive[socketId] = false;
         io.emit('player_died', { name: player.name });
