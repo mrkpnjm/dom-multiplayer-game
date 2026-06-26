@@ -35,7 +35,10 @@ const getSegment = (snakeId, segmentIndex, className = 'segment', color = null) 
         newDiv.className = className;
         
         // Apply the unique player color!
-        if (color) newDiv.style.backgroundColor = color;
+        if (color) {
+            newDiv.style.backgroundColor = color;
+            newDiv.style.color = color;
+        };
         
         board.appendChild(newDiv);
         snakeSegments.push(newDiv);
@@ -109,7 +112,7 @@ const draw = (alpha) => {
 
 const loop = (now) => {
     // Only draw if the board is actively in the DOM
-    if (document.getElementById('board')) {
+    if (board) {
         const alpha = Math.min((now - currentTimestamp) / TICK_INTERVAL, 1);
         draw(alpha);
     }
