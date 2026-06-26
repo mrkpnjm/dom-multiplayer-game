@@ -222,15 +222,15 @@ ul {
 }
 
 .powerup-item {
-    width: 24px; /* Slightly larger than food */
+    width: 24px; /* larger than food */
     height: 24px;
     background-color: #ffffff;
     box-shadow: 0 0 10px #fff, 0 0 20px #00ffff, 0 0 40px #00ffff; /* Cyan glow */
-    border-radius: 20%; /* Slightly square to look like a crystal */
+    border-radius: 20%;
     position: absolute;
     top: -12px;
     left: -12px;
-    animation: pulse-powerup 0.5s infinite alternate; /* Fast throb */
+    animation: pulse-powerup 0.5s infinite alternate;
 }
 
 @keyframes pulse-powerup {

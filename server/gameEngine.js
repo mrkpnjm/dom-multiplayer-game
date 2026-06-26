@@ -140,7 +140,7 @@ export function tick(state, turningMap) {
 
         // PowerUp Collision
         if (state.powerUp && dist({ x: snake.x, y: snake.y }, state.powerUp) < SEGMENT_SIZE * 1.5) {
-            // ---> FIXED: Using the variable instead of hardcoded 100
+            
             snake.powerupTimer = POWERUP_DURATION; 
             state.powerUp = null; // Remove it from the board
             

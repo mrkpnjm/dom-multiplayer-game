@@ -21,9 +21,6 @@ sounds.powerup.volume = 0.4;
 sounds.victory.volume = 0.6;
 sounds.background.loop = true;
 
-// We still need an init function triggered by the "Join" button click.
-// Browsers require a user interaction before they allow audio to play.
-// We silently play and pause a sound to "unlock" the audio context.
 export function initAudio() {
     sounds.eat
         .play()

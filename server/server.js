@@ -69,7 +69,14 @@ function handlePlayerLeave(socketId) {
 io.on('connection', (socket) => {
     socket.on('join', ({ name }) => {
         const nameExists = [...players.values()].some((p) => p.name === name);
-        if (nameExists || players.size >= 4) return;
+        
+        // Actively tell the client WHY they were rejected
+        if (nameExists) {
+            return socket.emit('join_error', { message: 'Name is already taken!' });
+        }
+        if (players.size >= 4) {
+            return socket.emit('join_error', { message: 'Lobby is full!' });
+        }
 
         players.set(socket.id, {
             id: socket.id,
@@ -107,7 +114,7 @@ io.on('connection', (socket) => {
             gameLoop = setInterval(() => {
                 if (!gameState || isPaused) return;
 
-                // ---> CHANGED: Destructure atePowerUp from the tick result
+                // Destructure atePowerUp from the tick result
                 const { died, ateFood, atePowerUp, gameOver, winnerId } = tick(gameState, playerTurning);
 
                 died.forEach((id) => {
@@ -119,7 +126,7 @@ io.on('connection', (socket) => {
                     io.emit('food_eaten');
                 }
 
-                // ---> NEW: Emit a special event when the power-up is grabbed
+                // Emit a special event when the power-up is grabbed
                 if (atePowerUp && atePowerUp.length > 0) {
                     io.emit('powerup_eaten');
                 }
